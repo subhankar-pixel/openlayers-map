@@ -1,4 +1,4 @@
-let map = L.map('map').setView([20, 80], 5); // fallback default
+let map = L.map('map'); // fallback default
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
