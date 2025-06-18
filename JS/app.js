@@ -1,37 +1,43 @@
-let map = L.map('map'); // fallback default
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
-
+let map; // declare map globally
 let parcelLayer;
 let selectedFeature = null;
 let selectedLayer = null;
 let geojsonData;
 
-// Enable Geoman globally
-map.pm.addControls({
-  position: 'topleft',
-  drawCircle: false,
-  drawMarker: false,
-  drawCircleMarker: false,
-  drawText: false,
-  drawPolyline: false,
-  drawRectangle: false,
-  drawPolygon: false,
-  editMode: false,
-  dragMode: false,
-  cutPolygon: false,
-  removalMode: false
-});
-
-// Load GeoJSON parcels
+// Load GeoJSON parcels first, then initialize map
 fetch('Data/parcels.geojson')
   .then(res => res.json())
   .then(data => {
     geojsonData = data;
-    loadParcels();
+    initMap();        // ✅ Initialize map only after data is loaded
+    loadParcels();    // ✅ Load parcel layer
   });
+
+function initMap() {
+  // Create the map only after we have GeoJSON data
+  map = L.map('map');
+
+  // Add base layer
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(map);
+
+  // Add Geoman controls
+  map.pm.addControls({
+    position: 'topleft',
+    drawCircle: false,
+    drawMarker: false,
+    drawCircleMarker: false,
+    drawText: false,
+    drawPolyline: false,
+    drawRectangle: false,
+    drawPolygon: false,
+    editMode: false,
+    dragMode: false,
+    cutPolygon: false,
+    removalMode: false
+  });
+}
 
 function loadParcels() {
   if (parcelLayer) {
@@ -57,8 +63,12 @@ function loadParcels() {
     }
   }).addTo(map);
 
-  // Zoom to parcel extent
-  map.fitBounds(parcelLayer.getBounds());
+  // ✅ Zoom to parcel extent (only if layer has features)
+  if (parcelLayer.getBounds().isValid()) {
+    map.fitBounds(parcelLayer.getBounds());
+  } else {
+    map.setView([20, 80], 5); // fallback location
+  }
 }
 
 function highlightSelected(layer) {
@@ -77,7 +87,6 @@ function saveAttribute() {
   alert("Attribute updated (not saved to file)");
 }
 
-// ✅ Geoman Split Mode
 function enableGeomanSplit() {
   if (!selectedLayer) {
     alert("Please select a parcel first.");
@@ -86,15 +95,11 @@ function enableGeomanSplit() {
 
   alert("Draw a line across the parcel to split. Double-click to finish.");
 
-  // Temporarily isolate selected layer
   const tempLayer = L.geoJSON(selectedFeature).addTo(map);
 
-  // Enable cut mode
   tempLayer.pm.enable({ allowSelfIntersection: false });
-
   map.pm.setGlobalOptions({ snappable: true, snapDistance: 15 });
 
-  // Listen to the cut event
   tempLayer.on('pm:cut', e => {
     const cutLayers = e.layer.getLayers();
     if (cutLayers.length < 2) {
@@ -102,11 +107,9 @@ function enableGeomanSplit() {
       return;
     }
 
-    // Remove original feature
     const index = geojsonData.features.indexOf(selectedFeature);
     if (index !== -1) geojsonData.features.splice(index, 1);
 
-    // Add new features from split
     cutLayers.forEach(l => {
       const newFeat = l.toGeoJSON();
       newFeat.properties = { ...selectedFeature.properties };
