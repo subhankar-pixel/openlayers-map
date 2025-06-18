@@ -1,28 +1,30 @@
-let map; // declare map globally
+let map;
 let parcelLayer;
 let selectedFeature = null;
 let selectedLayer = null;
 let geojsonData;
 
-// Load GeoJSON parcels first, then initialize map
+// Load GeoJSON first, then init map
 fetch('Data/parcels.geojson')
   .then(res => res.json())
   .then(data => {
     geojsonData = data;
-    initMap();        // ✅ Initialize map only after data is loaded
-    loadParcels();    // ✅ Load parcel layer
+    initMap();
+    loadParcels();
+  })
+  .catch(err => {
+    console.error("Failed to load parcels.geojson", err);
+    alert("Could not load parcel data. Check console for error.");
   });
 
 function initMap() {
-  // Create the map only after we have GeoJSON data
   map = L.map('map');
 
-  // Add base layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  // Add Geoman controls
   map.pm.addControls({
     position: 'topleft',
     drawCircle: false,
@@ -49,9 +51,7 @@ function loadParcels() {
       layer.on('click', () => {
         selectedFeature = feature;
         selectedLayer = layer;
-
         highlightSelected(layer);
-
         document.getElementById("attributePanel").style.display = "block";
         document.getElementById("ownerInput").value = feature.properties.owner || "";
       });
@@ -63,11 +63,11 @@ function loadParcels() {
     }
   }).addTo(map);
 
-  // ✅ Zoom to parcel extent (only if layer has features)
+  // Zoom to parcel extent
   if (parcelLayer.getBounds().isValid()) {
     map.fitBounds(parcelLayer.getBounds());
   } else {
-    map.setView([20, 80], 5); // fallback location
+    map.setView([20, 80], 5); // fallback if no geometry
   }
 }
 
@@ -93,7 +93,7 @@ function enableGeomanSplit() {
     return;
   }
 
-  alert("Draw a line across the parcel to split. Double-click to finish.");
+  alert("Draw a line to split the parcel. Double-click to finish.");
 
   const tempLayer = L.geoJSON(selectedFeature).addTo(map);
 
@@ -103,7 +103,7 @@ function enableGeomanSplit() {
   tempLayer.on('pm:cut', e => {
     const cutLayers = e.layer.getLayers();
     if (cutLayers.length < 2) {
-      alert("Split failed. Make sure the line cuts across the entire parcel.");
+      alert("Split failed. Ensure line fully crosses parcel.");
       return;
     }
 
