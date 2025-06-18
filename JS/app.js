@@ -18,28 +18,36 @@ fetch('Data/parcels.geojson')
   });
 
 function initMap() {
+  // Create map first
   map = L.map('map');
 
+  // Add base tile layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
+    attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  map.pm.addControls({
-    position: 'topleft',
-    drawCircle: false,
-    drawMarker: false,
-    drawCircleMarker: false,
-    drawText: false,
-    drawPolyline: false,
-    drawRectangle: false,
-    drawPolygon: false,
-    editMode: false,
-    dragMode: false,
-    cutPolygon: false,
-    removalMode: false
-  });
+  // ✅ Only now add Geoman controls, once map is fully initialized
+  if (map.pm) {
+    map.pm.addControls({
+      position: 'topleft',
+      drawCircle: false,
+      drawMarker: false,
+      drawCircleMarker: false,
+      drawText: false,
+      drawPolyline: false,
+      drawRectangle: false,
+      drawPolygon: false,
+      editMode: false,
+      dragMode: false,
+      cutPolygon: false,
+      removalMode: false
+    });
+  } else {
+    console.error("Geoman plugin (map.pm) not available.");
+  }
 }
+
 
 function loadParcels() {
   if (parcelLayer) {
