@@ -101,26 +101,30 @@ function activateSplitMode() {
 }
 
 function performSplit() {
-  if (!drawnLine || !selectedFeature) {
-    alert("Missing selection or line.");
+  const splitLine = drawnLine;
+
+  if (!selectedFeature || !selectedFeature.geometry || selectedFeature.geometry.type !== "Polygon") {
+    alert("Selected feature is not a valid Polygon.");
     return;
   }
 
   try {
-    const polyFeature = turf.feature(selectedFeature.geometry);
-    const lineFeature = turf.feature(drawnLine.geometry);
+    // Convert both to Turf features
+    const polygonFeature = turf.feature(selectedFeature.geometry, selectedFeature.properties);
+    const lineFeature = turf.feature(splitLine.geometry);
 
-    const result = turf.lineSplit(polyFeature, lineFeature);
+    // Perform the split
+    const result = turf.lineSplit(polygonFeature, lineFeature);
 
-    if (!result || result.features.length < 2) {
-      alert("Split failed: Line may not intersect the polygon correctly.");
+    if (!result.features.length) {
+      alert("Split failed: Line may not intersect the parcel.");
       return;
     }
 
+    // Replace original feature with split parts
     const index = geojsonData.features.indexOf(selectedFeature);
     if (index !== -1) {
       geojsonData.features.splice(index, 1);
-
       result.features.forEach(f => {
         f.properties = { ...selectedFeature.properties };
         geojsonData.features.push(f);
@@ -133,12 +137,12 @@ function performSplit() {
       loadParcels();
       alert("Parcel split successfully.");
     }
-
   } catch (err) {
     console.error("Split error:", err);
     alert("An error occurred during the split.");
   }
 }
+
 
 function exportGeoJSON() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojsonData));
