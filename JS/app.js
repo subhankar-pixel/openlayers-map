@@ -31,12 +31,12 @@ function initMap() {
     position: 'topleft',
     drawCircle: false,
     drawMarker: false,
-    drawPolyline: true,
+    drawPolyline: false,
     drawRectangle: false,
     drawPolygon: false,
     editMode: false,
     dragMode: false,
-    cutPolygon: false,
+    cutPolygon: true,
     removalMode: false
   });
 }
