@@ -12,13 +12,16 @@
 </head>
 <body>
 
+  <!-- UI Controls -->
   <div class="top-buttons">
     <button onclick="activateSplitMode()">✂️ Split Parcel</button>
     <button onclick="exportGeoJSON()">⬇️ Export GeoJSON</button>
   </div>
 
+  <!-- Map Container -->
   <div id="map"></div>
 
+  <!-- Attribute Panel -->
   <div class="attribute-panel" id="attributePanel" style="display: none;">
     <h4>Edit Parcel Attribute</h4>
     <label for="ownerInput">Owner Name:</label><br />
@@ -26,14 +29,17 @@
     <button onclick="saveAttribute()">Save Changes</button>
   </div>
 
-  <!-- JS Scripts -->
+  <!-- JS Libraries -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   
   <!-- Turf.js for geometry operations -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- Your app code -->
+  <!-- GeometryUtil for snapping -->
+  <script src="https://unpkg.com/leaflet-geometryutil"></script>
+
+  <!-- Custom App Script -->
   <script src="JS/app.js"></script>
 </body>
 </html>
