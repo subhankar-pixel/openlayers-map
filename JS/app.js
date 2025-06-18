@@ -30,7 +30,7 @@ function initMap() {
     drawMarker: false,
     drawCircleMarker: false,
     drawText: false,
-    drawPolyline: false,
+    drawPolyline: true,
     drawRectangle: false,
     drawPolygon: false,
     editMode: false,
@@ -91,8 +91,20 @@ function enableGeomanSplit() {
     alert("Please select a parcel first.");
     return;
   }
-
   alert("Draw a line across the parcel to split. Double-click to finish.");
+  
+  // Enable draw line mode
+  map.pm.enableDraw('Line', {
+    snappable: true,
+    snapDistance: 15
+  });
+
+  // Handle created line
+  map.once('pm:drawend', e => {
+    const lineLayer = e.layer;
+    performSplit(lineLayer); // Split logic here
+  });
+}
 
   const tempLayer = L.geoJSON(selectedFeature).addTo(map);
   tempLayer.pm.enable({ allowSelfIntersection: false });
