@@ -1,87 +1,103 @@
-const map = L.map('map').setView([22.572, 88.365], 17);
+let map = L.map('map').setView([20.59, 78.96], 5);
 
-// 1. Basemap
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// 2. Load GeoJSON Parcels
 let parcelLayer;
+let selectedFeature = null;
+let geojsonData;
+let drawnLine;
 
-fetch('data/parcels.geojson')
+fetch('Data/parcels.geojson')
   .then(res => res.json())
   .then(data => {
+    geojsonData = data;
     parcelLayer = L.geoJSON(data, {
-      style: {
-        color: "#ff7800",
-        weight: 2
+      onEachFeature: (feature, layer) => {
+        layer.on('click', () => {
+          selectedFeature = feature;
+          document.getElementById("attributePanel").style.display = "block";
+          document.getElementById("ownerInput").value = feature.properties.owner || "";
+        });
       },
-      onEachFeature: function (feature, layer) {
-        layer.bindPopup("Owner: " + feature.properties.owner);
+      style: {
+        color: 'blue',
+        weight: 2,
+        fillOpacity: 0.4
       }
     }).addTo(map);
+    map.fitBounds(parcelLayer.getBounds());
   });
 
-// 3. Initialize Draw Control
-const drawnItems = new L.FeatureGroup();
-map.addLayer(drawnItems);
+function saveAttribute() {
+  if (!selectedFeature) return;
 
-const drawControl = new L.Control.Draw({
-  draw: {
-    polygon: false,
-    rectangle: false,
-    circle: false,
-    marker: false,
-    circlemarker: false,
-    polyline: {
-      shapeOptions: {
-        color: 'blue',
-        weight: 3
-      }
+  const newOwner = document.getElementById("ownerInput").value;
+  selectedFeature.properties.owner = newOwner;
+
+  parcelLayer.clearLayers();
+  parcelLayer.addData(geojsonData);
+  alert("Attribute updated (not saved to file)");
+}
+
+function activateSplitMode() {
+  alert("Draw a line to split a parcel. Double-click to finish.");
+
+  const drawLayer = L.featureGroup().addTo(map);
+
+  const drawControl = new L.Draw.Polyline(map, {
+    shapeOptions: {
+      color: 'red',
+      weight: 3
     }
-  },
-  edit: {
-    featureGroup: drawnItems,
-    remove: true
-  }
-});
-map.addControl(drawControl);
+  });
 
-// 4. Handle Drawing Events
-map.on(L.Draw.Event.CREATED, function (event) {
-  const layer = event.layer;
-  if (event.layerType === 'polyline') {
-    // Perform split logic here using Turf.js
-    if (parcelLayer) {
-      const polyline = layer.toGeoJSON();
-      const newFeatures = [];
+  drawControl.enable();
 
-      parcelLayer.eachLayer(function (pLayer) {
-        const parcel = pLayer.toGeoJSON();
-        try {
-          const splitResult = turf.lineSplit(parcel, polyline);
-          if (splitResult.features.length > 1) {
-            splitResult.features.forEach(f => {
-              f.properties = { ...parcel.properties };
-              newFeatures.push(f);
-            });
-          } else {
-            newFeatures.push(parcel);
-          }
-        } catch (e) {
-          console.error("Split failed: ", e);
-        }
-      });
+  map.once(L.Draw.Event.CREATED, (e) => {
+    drawnLine = e.layer.toGeoJSON();
+    drawLayer.addLayer(e.layer);
 
-      map.removeLayer(parcelLayer);
-      parcelLayer = L.geoJSON(newFeatures, {
-        style: { color: '#00cc88', weight: 2 },
-        onEachFeature: function (feature, layer) {
-          layer.bindPopup("Owner: " + feature.properties.owner);
-        }
-      }).addTo(map);
-    }
+    performSplit();
+    drawControl.disable();
+  });
+}
+
+function performSplit() {
+  if (!selectedFeature || !drawnLine) {
+    alert("No parcel selected or no line drawn.");
+    return;
   }
 
-  drawnItems.addLayer(layer);
-});
+  const parcel = selectedFeature;
+  const splitResult = turf.lineSplit(parcel, drawnLine);
+
+  if (!splitResult.features.length) {
+    alert("Split failed. Line may not intersect the parcel.");
+    return;
+  }
+
+  const index = geojsonData.features.indexOf(parcel);
+  geojsonData.features.splice(index, 1);
+
+  splitResult.features.forEach(f => {
+    f.properties = { ...parcel.properties };
+    geojsonData.features.push(f);
+  });
+
+  parcelLayer.clearLayers();
+  parcelLayer.addData(geojsonData);
+  selectedFeature = null;
+  document.getElementById("attributePanel").style.display = "none";
+
+  alert("Parcel split successfully.");
+}
+
+function exportGeoJSON() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojsonData));
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute("href", dataStr);
+  dlAnchor.setAttribute("download", "edited_parcels.geojson");
+  dlAnchor.click();
+}
