@@ -1,31 +1,29 @@
-let map; // declare map globally
+let map;
 let parcelLayer;
 let selectedFeature = null;
 let selectedLayer = null;
 let geojsonData;
 
-// Load GeoJSON parcels first, then initialize map
+// Load GeoJSON parcels then initialize map
 fetch('Data/parcels.geojson')
   .then(res => res.json())
   .then(data => {
     geojsonData = data;
-    initMap();        // ✅ Initialize map only after data is loaded
-    loadParcels();    // ✅ Load parcel layer
+    initMap();
+    loadParcels();
   })
   .catch(err => {
     alert("Could not load parcel data. Check console for error.");
-    console.error("Parcel Load Error:", err);
+    console.error(err);
   });
 
 function initMap() {
   map = L.map('map');
 
-  // Add base layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
   }).addTo(map);
 
-  // Add Geoman controls (but no draw tools initially)
   map.pm.addControls({
     position: 'topleft',
     drawCircle: false,
@@ -54,7 +52,6 @@ function loadParcels() {
         selectedLayer = layer;
 
         highlightSelected(layer);
-
         document.getElementById("attributePanel").style.display = "block";
         document.getElementById("ownerInput").value = feature.properties.owner || "";
       });
@@ -66,11 +63,10 @@ function loadParcels() {
     }
   }).addTo(map);
 
-  // ✅ Zoom to parcel extent
   if (parcelLayer.getBounds().isValid()) {
     map.fitBounds(parcelLayer.getBounds());
   } else {
-    map.setView([20, 80], 5); // fallback if no valid geometry
+    map.setView([20, 80], 5); // fallback
   }
 }
 
@@ -84,55 +80,44 @@ function highlightSelected(layer) {
 
 function saveAttribute() {
   if (!selectedFeature) return;
-
   const newOwner = document.getElementById("ownerInput").value;
   selectedFeature.properties.owner = newOwner;
-
-  loadParcels(); // reload to reflect updated label
+  loadParcels();
   alert("Attribute updated (not saved to file)");
 }
 
-// ✅ Working Geoman Split Mode
 function enableGeomanSplit() {
-  if (!selectedLayer || !selectedFeature) {
+  if (!selectedLayer) {
     alert("Please select a parcel first.");
     return;
   }
 
-  alert("Draw a line to split the selected parcel. Double-click to finish.");
+  alert("Draw a line across the parcel to split. Double-click to finish.");
 
-  // Add selected feature to map as editable temp layer
-  const tempLayer = L.geoJSON(selectedFeature, {
-    pmIgnore: false
-  }).addTo(map);
-
-  // Enable Geoman cut mode on that layer
+  const tempLayer = L.geoJSON(selectedFeature).addTo(map);
   tempLayer.pm.enable({ allowSelfIntersection: false });
   map.pm.setGlobalOptions({ snappable: true, snapDistance: 15 });
 
   tempLayer.on('pm:cut', e => {
     const cutLayers = e.layer.getLayers();
-
-    if (!cutLayers || cutLayers.length < 2) {
-      alert("Split failed. Ensure the line fully crosses the parcel.");
+    if (cutLayers.length < 2) {
+      alert("Split failed. Make sure the line cuts across the entire parcel.");
       return;
     }
 
-    // Remove original feature
     const index = geojsonData.features.indexOf(selectedFeature);
     if (index !== -1) geojsonData.features.splice(index, 1);
 
-    // Add split parts
-    cutLayers.forEach(layer => {
-      const newFeat = layer.toGeoJSON();
-      newFeat.properties = { ...selectedFeature.properties }; // retain attributes
+    cutLayers.forEach(l => {
+      const newFeat = l.toGeoJSON();
+      newFeat.properties = { ...selectedFeature.properties };
       geojsonData.features.push(newFeat);
     });
 
-    // Clean up
     selectedFeature = null;
     selectedLayer = null;
     document.getElementById("attributePanel").style.display = "none";
+
     map.removeLayer(tempLayer);
     loadParcels();
     alert("Parcel split successfully.");
