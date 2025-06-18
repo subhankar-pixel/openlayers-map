@@ -1,46 +1,99 @@
+/* Reset & Base */
 body, html {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f9f9f9;
 }
 
+/* Map Fullscreen */
 #map {
   height: 100vh;
   width: 100%;
+  z-index: 0;
 }
 
+/* Top Buttons (Split, Export) */
 .top-buttons {
   position: absolute;
   top: 10px;
-  left: 10px;
-  z-index: 1000;
+  left: 30px;
+  z-index: 1001;
 }
 
 .top-buttons button {
-  margin-right: 5px;
-  padding: 6px 10px;
-  background: white;
+  margin-right: 6px;
+  padding: 6px 12px;
+  background: #fff;
   border: 1px solid #aaa;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 5px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  transition: background 0.2s ease;
 }
 
+.top-buttons button:hover {
+  background: #f0f0f0;
+}
+
+/* Attribute Editing Panel */
 .attribute-panel {
   position: absolute;
   top: 60px;
   right: 10px;
   background: white;
-  padding: 12px;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
-  z-index: 1000;
+  padding: 14px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.15);
+  z-index: 1001;
+  width: 220px;
+  border-radius: 6px;
   display: none;
-  width: 200px;
-  border-radius: 4px;
+}
+
+.attribute-panel h4 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+.attribute-panel label {
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: block;
 }
 
 .attribute-panel input {
   width: 100%;
-  padding: 4px;
+  padding: 6px;
+  margin-top: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
+.attribute-panel button {
+  margin-top: 10px;
+  width: 100%;
+  padding: 6px 0;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.attribute-panel button:hover {
+  background: #0056b3;
+}
+
+/* Optional: Style for Leaflet-Geoman Controls */
+.leaflet-pm-toolbar {
+  z-index: 1000 !important;
+}
+
+.leaflet-pm-icon {
+  border-radius: 4px !important;
+  background-color: white !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
