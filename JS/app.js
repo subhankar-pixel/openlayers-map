@@ -101,32 +101,30 @@ function activateSplitMode() {
 }
 
 function performSplit() {
-  const splitLine = drawnLine;
-
-  if (!selectedFeature || !selectedFeature.geometry || selectedFeature.geometry.type !== "Polygon") {
-    alert("Selected feature is not a valid Polygon.");
+  if (!selectedFeature || !drawnLine) {
+    alert("Missing selected parcel or drawn line.");
     return;
   }
 
+  // Ensure proper geometry types
+  const polygonFeature = turf.cleanCoords(turf.feature(selectedFeature.geometry, selectedFeature.properties));
+  const lineFeature = turf.cleanCoords(turf.feature(drawnLine.geometry));
+
   try {
-    // Convert both to Turf features
-    const polygonFeature = turf.feature(selectedFeature.geometry, selectedFeature.properties);
-    const lineFeature = turf.feature(splitLine.geometry);
+    const splitResult = turf.lineSplit(polygonFeature, lineFeature);
 
-    // Perform the split
-    const result = turf.lineSplit(polygonFeature, lineFeature);
-
-    if (!result.features.length) {
-      alert("Split failed: Line may not intersect the parcel.");
+    if (splitResult.features.length < 2) {
+      alert("Split failed: Make sure the line intersects the polygon fully.");
       return;
     }
 
-    // Replace original feature with split parts
+    // Replace original with split parts
     const index = geojsonData.features.indexOf(selectedFeature);
     if (index !== -1) {
-      geojsonData.features.splice(index, 1);
-      result.features.forEach(f => {
-        f.properties = { ...selectedFeature.properties };
+      geojsonData.features.splice(index, 1); // remove original
+
+      splitResult.features.forEach(f => {
+        f.properties = { ...selectedFeature.properties }; // copy attributes
         geojsonData.features.push(f);
       });
 
@@ -137,12 +135,12 @@ function performSplit() {
       loadParcels();
       alert("Parcel split successfully.");
     }
+
   } catch (err) {
-    console.error("Split error:", err);
+    console.error("Error during split:", err);
     alert("An error occurred during the split.");
   }
 }
-
 
 function exportGeoJSON() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojsonData));
