@@ -1,40 +1,34 @@
-let map; // declare map globally
+let map;
 let parcelLayer;
 let selectedFeature = null;
 let selectedLayer = null;
 let geojsonData;
+let drawLineLayer = null; // line drawn for split
 
-// Load GeoJSON parcels first, then initialize map
+// Load parcels
 fetch('Data/parcels.geojson')
   .then(res => res.json())
   .then(data => {
     geojsonData = data;
-    initMap();        // ✅ Initialize map only after data is loaded
-    loadParcels();    // ✅ Load parcel layer
-  })
-  .catch(err => {
-    alert("Could not load parcel data. Check console for error.");
-    console.error("Parcel Load Error:", err);
+    initMap();
+    loadParcels();
   });
 
 function initMap() {
   map = L.map('map');
-
-  // Add base layer
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
   }).addTo(map);
 
-  // Add Geoman controls (but no draw tools initially)
   map.pm.addControls({
     position: 'topleft',
     drawCircle: false,
     drawMarker: false,
     drawCircleMarker: false,
     drawText: false,
-    drawPolyline: false,
-    drawRectangle: false,
     drawPolygon: false,
+    drawRectangle: false,
+    drawPolyline: false,
     editMode: false,
     dragMode: false,
     cutPolygon: false,
@@ -43,16 +37,13 @@ function initMap() {
 }
 
 function loadParcels() {
-  if (parcelLayer) {
-    parcelLayer.remove();
-  }
+  if (parcelLayer) parcelLayer.remove();
 
   parcelLayer = L.geoJSON(geojsonData, {
     onEachFeature: (feature, layer) => {
       layer.on('click', () => {
         selectedFeature = feature;
         selectedLayer = layer;
-
         highlightSelected(layer);
 
         document.getElementById("attributePanel").style.display = "block";
@@ -66,11 +57,10 @@ function loadParcels() {
     }
   }).addTo(map);
 
-  // ✅ Zoom to parcel extent
   if (parcelLayer.getBounds().isValid()) {
     map.fitBounds(parcelLayer.getBounds());
   } else {
-    map.setView([20, 80], 5); // fallback if no valid geometry
+    map.setView([20, 80], 5);
   }
 }
 
@@ -84,58 +74,65 @@ function highlightSelected(layer) {
 
 function saveAttribute() {
   if (!selectedFeature) return;
-
-  const newOwner = document.getElementById("ownerInput").value;
-  selectedFeature.properties.owner = newOwner;
-
-  loadParcels(); // reload to reflect updated label
-  alert("Attribute updated (not saved to file)");
+  selectedFeature.properties.owner = document.getElementById("ownerInput").value;
+  loadParcels();
+  alert("Attribute updated");
 }
 
-// ✅ Working Geoman Split Mode
+// ✅ NEW: Enable drawing a line and split selected parcel
 function enableGeomanSplit() {
-  if (!selectedLayer || !selectedFeature) {
+  if (!selectedFeature) {
     alert("Please select a parcel first.");
     return;
   }
 
-  alert("Draw a line to split the selected parcel. Double-click to finish.");
+  alert("Draw a line across the parcel to split. Double-click to finish.");
 
-  // Add selected feature to map as editable temp layer
-  const tempLayer = L.geoJSON(selectedFeature, {
-    pmIgnore: false
-  }).addTo(map);
+  // Enable polyline drawing mode
+  map.pm.enableDraw('Line', {
+    snappable: true,
+    snapDistance: 15,
+    templineStyle: { color: 'red' },
+    hintlineStyle: { color: 'red' }
+  });
 
-  // Enable Geoman cut mode on that layer
-  tempLayer.pm.enable({ allowSelfIntersection: false });
-  map.pm.setGlobalOptions({ snappable: true, snapDistance: 15 });
+  // Handle line draw
+  map.once('pm:create', e => {
+    drawLineLayer = e.layer;
+    map.removeLayer(drawLineLayer); // We’ll just use geometry
 
-  tempLayer.on('pm:cut', e => {
-    const cutLayers = e.layer.getLayers();
+    const drawnLine = drawLineLayer.toGeoJSON();
+    const selectedPoly = turf.feature(selectedFeature.geometry);
 
-    if (!cutLayers || cutLayers.length < 2) {
-      alert("Split failed. Ensure the line fully crosses the parcel.");
-      return;
+    try {
+      const result = turf.lineSplit(selectedPoly, drawnLine);
+
+      if (!result.features || result.features.length < 2) {
+        alert("Split failed. Make sure line cuts through the polygon.");
+        return;
+      }
+
+      const index = geojsonData.features.indexOf(selectedFeature);
+      if (index !== -1) geojsonData.features.splice(index, 1);
+
+      result.features.forEach(f => {
+        f.properties = { ...selectedFeature.properties };
+        geojsonData.features.push(f);
+      });
+
+      selectedFeature = null;
+      selectedLayer = null;
+      document.getElementById("attributePanel").style.display = "none";
+
+      loadParcels();
+      alert("Parcel split successfully.");
+    } catch (err) {
+      console.error("Split error:", err);
+      alert("An error occurred during the split.");
     }
 
-    // Remove original feature
-    const index = geojsonData.features.indexOf(selectedFeature);
-    if (index !== -1) geojsonData.features.splice(index, 1);
-
-    // Add split parts
-    cutLayers.forEach(layer => {
-      const newFeat = layer.toGeoJSON();
-      newFeat.properties = { ...selectedFeature.properties }; // retain attributes
-      geojsonData.features.push(newFeat);
-    });
-
-    // Clean up
-    selectedFeature = null;
-    selectedLayer = null;
-    document.getElementById("attributePanel").style.display = "none";
-    map.removeLayer(tempLayer);
-    loadParcels();
-    alert("Parcel split successfully.");
+    // Disable draw mode after use
+    map.pm.disableDraw('Line');
   });
 }
 
