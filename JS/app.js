@@ -20,6 +20,9 @@ fetch('Data/parcels.geojson')
 function initMap() {
   map = L.map('map');
 
+  console.log('Map object:', map);
+  console.log('Geoman plugin:', map.pm); // <--- this should not be undefined
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
   }).addTo(map);
@@ -28,8 +31,6 @@ function initMap() {
     position: 'topleft',
     drawCircle: false,
     drawMarker: false,
-    drawCircleMarker: false,
-    drawText: false,
     drawPolyline: true,
     drawRectangle: false,
     drawPolygon: false,
@@ -39,6 +40,7 @@ function initMap() {
     removalMode: false
   });
 }
+
 
 function loadParcels() {
   if (parcelLayer) {
