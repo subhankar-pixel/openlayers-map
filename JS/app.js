@@ -4,7 +4,7 @@ let selectedFeature = null;
 let selectedLayer = null;
 let geojsonData;
 
-// Load GeoJSON then initialize
+// Load GeoJSON parcels then initialize map
 fetch('Data/parcels.geojson')
   .then(res => res.json())
   .then(data => {
@@ -18,7 +18,7 @@ fetch('Data/parcels.geojson')
   });
 
 function initMap() {
-  map = L.map('map').setView([20, 80], 5);
+  map = L.map('map');
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19
@@ -30,7 +30,7 @@ function initMap() {
     drawMarker: false,
     drawCircleMarker: false,
     drawText: false,
-    drawPolyline: false,
+    drawPolyline: true,
     drawRectangle: false,
     drawPolygon: false,
     editMode: false,
@@ -41,7 +41,9 @@ function initMap() {
 }
 
 function loadParcels() {
-  if (parcelLayer) parcelLayer.remove();
+  if (parcelLayer) {
+    parcelLayer.remove();
+  }
 
   parcelLayer = L.geoJSON(geojsonData, {
     onEachFeature: (feature, layer) => {
@@ -61,14 +63,20 @@ function loadParcels() {
     }
   }).addTo(map);
 
-  if (parcelLayer.getBounds().isValid()) {
-    map.fitBounds(parcelLayer.getBounds());
+  const bounds = parcelLayer.getBounds();
+  if (bounds.isValid()) {
+    map.fitBounds(bounds);
+  } else {
+    map.setView([20, 80], 5); // fallback
   }
 }
 
 function highlightSelected(layer) {
   parcelLayer.eachLayer(l => parcelLayer.resetStyle(l));
-  layer.setStyle({ color: 'red', weight: 3 });
+  layer.setStyle({
+    color: 'red',
+    weight: 3
+  });
 }
 
 function saveAttribute() {
@@ -79,7 +87,6 @@ function saveAttribute() {
   alert("Attribute updated (not saved to file)");
 }
 
-// ✅ SPLIT using Leaflet-Geoman only
 function enableGeomanSplit() {
   if (!selectedLayer) {
     alert("Please select a parcel first.");
@@ -88,38 +95,66 @@ function enableGeomanSplit() {
 
   alert("Draw a line across the parcel to split. Double-click to finish.");
 
+  // Enable line draw
+  map.pm.enableDraw('Line', {
+    snappable: true,
+    snapDistance: 15
+  });
+
+  // Handle the completed line drawing
+  map.once('pm:drawend', e => {
+    const lineLayer = e.layer;
+    performSplit(lineLayer);
+  });
+}
+
+function performSplit(lineLayer) {
+  // Convert selected parcel to temporary editable layer
   const tempLayer = L.geoJSON(selectedFeature).addTo(map);
 
-  // Enable cut mode on the temp layer
-  tempLayer.pm.enableCut();
+  // Enable cut mode
+  tempLayer.pm.enable({ allowSelfIntersection: false });
+  map.pm.setGlobalOptions({ snappable: true, snapDistance: 15 });
 
-  tempLayer.on('pm:cut', e => {
-    const cutLayers = e.layer.getLayers();
-
-    if (cutLayers.length < 2) {
-      alert("Split failed. Make sure the line cuts across the parcel completely.");
-      map.removeLayer(tempLayer);
-      return;
+  // Manually fire cut (simulate cut using drawn line)
+  const cutEvent = {
+    layer: {
+      getLayers: () => {
+        try {
+          return turf.difference(tempLayer.toGeoJSON().features[0], lineLayer.toGeoJSON())?.features || [];
+        } catch (err) {
+          alert("Error splitting parcel. Try a different line.");
+          return [];
+        }
+      }
     }
+  };
 
-    // Replace original with split parts
-    const index = geojsonData.features.indexOf(selectedFeature);
-    if (index !== -1) geojsonData.features.splice(index, 1);
+  const cutLayers = cutEvent.layer.getLayers();
+  if (cutLayers.length < 2) {
+    alert("Split failed. Make sure the line cuts across the entire parcel.");
+    return;
+  }
 
-    cutLayers.forEach(l => {
-      const newFeature = l.toGeoJSON();
-      newFeature.properties = { ...selectedFeature.properties };
-      geojsonData.features.push(newFeature);
-    });
+  // Remove original feature
+  const index = geojsonData.features.indexOf(selectedFeature);
+  if (index !== -1) geojsonData.features.splice(index, 1);
 
-    selectedFeature = null;
-    selectedLayer = null;
-    document.getElementById("attributePanel").style.display = "none";
-
-    map.removeLayer(tempLayer);
-    loadParcels();
-    alert("Parcel split successfully.");
+  // Add split features
+  cutLayers.forEach(l => {
+    const newFeat = l; // already a GeoJSON feature
+    newFeat.properties = { ...selectedFeature.properties };
+    geojsonData.features.push(newFeat);
   });
+
+  selectedFeature = null;
+  selectedLayer = null;
+  document.getElementById("attributePanel").style.display = "none";
+
+  map.removeLayer(tempLayer);
+  map.removeLayer(lineLayer);
+  loadParcels();
+  alert("Parcel split successfully.");
 }
 
 function exportGeoJSON() {
