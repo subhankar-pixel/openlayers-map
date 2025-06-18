@@ -1,4 +1,4 @@
-let map = L.map('map').setView([20.59, 78.96], 5);
+let map = L.map('map');
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
@@ -42,6 +42,9 @@ function loadParcels() {
       fillOpacity: 0.4
     }
   }).addTo(map);
+
+  // Automatically zoom to parcel extent
+  map.fitBounds(parcelLayer.getBounds());
 }
 
 function highlightSelected(layer) {
