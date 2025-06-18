@@ -19,19 +19,21 @@
 
   <div id="map"></div>
 
-  <div class="attribute-panel" id="attributePanel">
+  <div class="attribute-panel" id="attributePanel" style="display: none;">
     <h4>Edit Parcel Attribute</h4>
     <label for="ownerInput">Owner Name:</label><br />
     <input type="text" id="ownerInput" /><br /><br />
     <button onclick="saveAttribute()">Save Changes</button>
   </div>
 
-  <!-- Leaflet JS + Plugins -->
+  <!-- JS Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  
+  <!-- Turf.js for geometry operations -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- App Script -->
+  <!-- Your app code -->
   <script src="JS/app.js"></script>
 </body>
 </html>
