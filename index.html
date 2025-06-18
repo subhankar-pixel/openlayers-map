@@ -7,14 +7,14 @@
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.1/dist/leaflet-geoman.css" />
   <link rel="stylesheet" href="CSS/style.css" />
 </head>
 <body>
 
   <!-- UI Controls -->
   <div class="top-buttons">
-    <button onclick="activateSplitMode()">✂️ Split Parcel</button>
+    <button onclick="enableGeomanSplit()">✂️ Split Parcel</button>
     <button onclick="exportGeoJSON()">⬇️ Export GeoJSON</button>
   </div>
 
@@ -31,15 +31,12 @@
 
   <!-- JS Libraries -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
-  
-  <!-- Turf.js for geometry operations -->
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.1/dist/leaflet-geoman.min.js"></script>
+
+  <!-- Optional: Turf.js if still needed for other purposes -->
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
-  <!-- GeometryUtil for snapping -->
-  <script src="https://unpkg.com/leaflet-geometryutil"></script>
-
-  <!-- Custom App Script -->
+  <!-- App Script -->
   <script src="JS/app.js"></script>
 </body>
 </html>
