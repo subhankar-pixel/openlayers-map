@@ -8,6 +8,7 @@ let parcelLayer;
 let selectedFeature = null;
 let selectedLayer = null;
 let geojsonData;
+let drawLayer;
 let drawnLine;
 
 // Load GeoJSON
@@ -71,7 +72,10 @@ function activateSplitMode() {
 
   alert("Draw a line to split the selected parcel. Double-click to finish.");
 
-  const drawLayer = L.featureGroup().addTo(map);
+  if (drawLayer) {
+    map.removeLayer(drawLayer);
+  }
+  drawLayer = L.featureGroup().addTo(map);
 
   const drawControl = new L.Draw.Polyline(map, {
     shapeOptions: {
@@ -84,37 +88,38 @@ function activateSplitMode() {
 
   map.once(L.Draw.Event.CREATED, (e) => {
     drawnLine = e.layer.toGeoJSON();
+
     drawLayer.addLayer(e.layer);
 
     performSplit();
+
     drawControl.disable();
   });
 }
 
 function performSplit() {
-  const splitLine = drawnLine;
-  const polygon = selectedFeature.geometry;
-
-  if (!polygon || polygon.type !== "Polygon") {
-    alert("Selected feature is not a valid Polygon.");
+  if (!drawnLine || !selectedFeature) {
+    alert("Missing selection or line.");
     return;
   }
 
-  // Turf splitting logic
   try {
-    const polyFeature = turf.feature(polygon, selectedFeature.properties);
-    const result = turf.lineSplit(polyFeature, splitLine);
+    const polyFeature = turf.feature(selectedFeature.geometry);
+    const lineFeature = turf.feature(drawnLine.geometry);
 
-    if (!result.features.length) {
-      alert("Split failed: Line may not intersect the parcel.");
+    const result = turf.lineSplit(polyFeature, lineFeature);
+
+    if (!result || result.features.length < 2) {
+      alert("Split failed: Line may not intersect the polygon correctly.");
       return;
     }
 
     const index = geojsonData.features.indexOf(selectedFeature);
     if (index !== -1) {
       geojsonData.features.splice(index, 1);
+
       result.features.forEach(f => {
-        f.properties = { ...selectedFeature.properties }; // retain original attributes
+        f.properties = { ...selectedFeature.properties };
         geojsonData.features.push(f);
       });
 
@@ -125,6 +130,7 @@ function performSplit() {
       loadParcels();
       alert("Parcel split successfully.");
     }
+
   } catch (err) {
     console.error("Split error:", err);
     alert("An error occurred during the split.");
