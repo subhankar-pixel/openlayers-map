@@ -90,13 +90,41 @@ function activateSplitMode() {
   drawControl.enable();
 
   map.once(L.Draw.Event.CREATED, (e) => {
-    drawnLine = e.layer.toGeoJSON();
+    const originalLine = e.layer;
+    const snappedLine = snapLineToParcelEdges(originalLine);
 
-    drawLayer.addLayer(e.layer);
+    drawnLine = snappedLine.toGeoJSON();
 
+    drawLayer.addLayer(snappedLine);
     performSplit();
 
     drawControl.disable();
+  });
+}
+
+function snapLineToParcelEdges(lineLayer) {
+  const latlngs = lineLayer.getLatLngs();
+  const snappedLatLngs = latlngs.map(pt => {
+    let closest = pt;
+    let minDist = Infinity;
+
+    parcelLayer.eachLayer(layer => {
+      const latlngs = layer.getLatLngs().flat(Infinity);
+      latlngs.forEach(vertex => {
+        const dist = pt.distanceTo(vertex);
+        if (dist < minDist && dist < 20) { // Snap only if within 20 meters
+          minDist = dist;
+          closest = vertex;
+        }
+      });
+    });
+
+    return closest;
+  });
+
+  return L.polyline(snappedLatLngs, {
+    color: 'red',
+    weight: 3
   });
 }
 
@@ -106,7 +134,6 @@ function performSplit() {
     return;
   }
 
-  // Ensure proper geometry types
   const polygonFeature = turf.cleanCoords(turf.feature(selectedFeature.geometry, selectedFeature.properties));
   const lineFeature = turf.cleanCoords(turf.feature(drawnLine.geometry));
 
